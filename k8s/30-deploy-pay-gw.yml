@@ -1,0 +1,45 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: payments-notifications
+  labels:
+    stack: payments
+    app: notifications
+spec:
+  selector:
+    matchLabels:
+      app: notifications
+      stack: payments
+  replicas: 1
+  template:
+    metadata:
+      name: payments-notifications
+      labels:
+        app: notifications
+        stack: payments
+    spec:
+      imagePullSecrets:
+      - name: stq
+      containers:
+      - name: notifications
+        image: storiqateam/payments-notifications
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RUN_MODE
+          value: k8s
+        - name: RUST_BACKTRACE
+          value: "1"
+        - name: RUST_LOG
+          value: payments=debug
+        - name: DATABASE_HOST
+          value: postgres
+        - name: DATABASE_URL
+          value: postgresql://notifications:notifications@postgres/notifications
+        volumeMounts:
+        - name: conf
+          mountPath: /app/config/
+      volumes:
+      - name: conf
+        configMap:
+          name: payments-notifications

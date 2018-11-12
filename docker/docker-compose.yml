@@ -1,0 +1,45 @@
+version: '3'
+services:
+  payments-notifications:
+    image: payments-notifications
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: payments-notifications
+    working_dir: /app
+    entrypoint:
+      - sh
+      - -c
+      - sleep 10; diesel migration run; /usr/local/cargo/bin/cargo run server
+    volumes:
+      - ..:/app
+    environment:
+      - DATABASE_URL=postgresql://payments-notifications:payments-notifications@payments-notifications-pg/payments-notifications
+      - "RUST_LOG=payments_notifications=debug"
+    expose:
+      - 8000
+    ports:
+      - 8000:8000
+    stdin_open: true
+    depends_on:
+      - payments-notifications-pg
+
+  payments-notifications-pg:
+    image: postgres:10
+    container_name: payments-notifications-pg
+    volumes:
+      - stq-payments-notifications-postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=payments-notifications
+      - POSTGRES_DB=payments-notifications
+      - POSTGRES_PASSWORD=payments-notifications
+    expose:
+      - 5432
+
+volumes:
+  stq-payments-notifications-postgres-data:
+
+networks:
+  default:
+    external:
+      name: payments
