@@ -12,7 +12,6 @@ use serde_json;
 
 pub use self::error::*;
 use super::HttpClient;
-use config::Config;
 use utils::read_body;
 
 pub trait CallbackClient: Send + Sync + 'static {
