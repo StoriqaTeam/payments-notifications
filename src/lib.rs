@@ -65,7 +65,7 @@ use self::client::*;
 use self::models::*;
 use self::prelude::*;
 use config::Config;
-use rabbit::{ConnectionHooks, RabbitConnectionManager, TransactionConsumerImpl};
+use rabbit::{ConnectionHooks, RabbitConnectionManager, TransactionConsumerImpl, TransactionPublisherImpl};
 use rabbit::{ErrorKind, ErrorSource};
 use services::Notificator;
 use utils::log_error;
@@ -89,25 +89,41 @@ pub fn start_server() {
     let config_clone = config.clone();
     let client = HttpClientImpl::new(&config);
     let ios_client = IosClientImpl::new(&config, client.clone());
-    let callback_client = CallbackClientImpl::new(client);
-    let fetcher = Notificator::new(Arc::new(ios_client), Arc::new(callback_client));
+    let callback_client = CallbackClientImpl::new(client.clone());
+    let email_client = EmailClientImpl::new(&config, client);
+
+    let mut core = tokio_core::reactor::Core::new().unwrap();
+    debug!("Started creating rabbit connection pool");
+
+    let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
+    let rabbit_connection_manager = core
+        .run(RabbitConnectionManager::create(&config_clone))
+        .map_err(|e| {
+            log_error(&e);
+        }).unwrap();
+    let rabbit_connection_pool = r2d2::Pool::builder()
+        .max_size(config_clone.rabbit.connection_pool_size as u32)
+        .connection_customizer(Box::new(ConnectionHooks))
+        .build(rabbit_connection_manager)
+        .expect("Cannot build rabbit connection pool");
+    debug!("Finished creating rabbit connection pool");
+    let consumer = TransactionConsumerImpl::new(rabbit_connection_pool.clone(), rabbit_thread_pool.clone());
+    let publisher = Arc::new(TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool));
+    core.run(publisher.init())
+        .map_err(|e| {
+            log_error(&e);
+        }).unwrap();
+    let publisher_clone = publisher.clone();
+
+    let fetcher = Notificator::new(
+        Arc::new(ios_client),
+        Arc::new(callback_client),
+        Arc::new(email_client),
+        publisher_clone,
+    );
     thread::spawn(move || {
         let mut core = tokio_core::reactor::Core::new().unwrap();
-        debug!("Started creating rabbit connection pool");
 
-        let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
-        let rabbit_connection_manager = core
-            .run(RabbitConnectionManager::create(&config_clone))
-            .map_err(|e| {
-                log_error(&e);
-            }).unwrap();
-        let rabbit_connection_pool = r2d2::Pool::builder()
-            .max_size(config_clone.rabbit.connection_pool_size as u32)
-            .connection_customizer(Box::new(ConnectionHooks))
-            .build(rabbit_connection_manager)
-            .expect("Cannot build rabbit connection pool");
-        debug!("Finished creating rabbit connection pool");
-        let publisher = TransactionConsumerImpl::new(rabbit_connection_pool, rabbit_thread_pool);
         loop {
             info!("Subscribing to rabbit");
             let counters = Arc::new(Mutex::new((0usize, 0usize, 0usize, 0usize, 0usize)));
@@ -116,7 +132,7 @@ pub fn start_server() {
             let consumers_to_close_clone = consumers_to_close.clone();
             let fetcher_clone = fetcher.clone();
             let resubscribe_duration = Duration::from_secs(config_clone.rabbit.restart_subscription_secs as u64);
-            let subscription = publisher
+            let subscription = consumer
                 .subscribe()
                 .and_then(move |consumer_and_chans| {
                     let counters_clone = counters.clone();

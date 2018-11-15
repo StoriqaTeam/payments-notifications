@@ -15,6 +15,7 @@ pub struct Config {
     pub graylog: Option<GrayLogConfig>,
     pub filelog: Option<FileLogConfig>,
     pub ios_credentials: IosCredentials,
+    pub sendgrid: SendGridConf,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -54,6 +55,15 @@ pub struct Rabbit {
     pub connection_timeout_secs: usize,
     pub connection_pool_size: usize,
     pub restart_subscription_secs: usize,
+}
+
+/// Smtp client settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct SendGridConf {
+    pub api_addr: String,
+    pub api_key: String,
+    pub send_mail_path: String,
+    pub from_email: String,
 }
 
 impl Config {

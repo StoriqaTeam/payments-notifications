@@ -19,6 +19,12 @@ connection_pool_size = 10
 restart_subscription_secs = 30
 
 [ios_credentials]
-ios_url = "",
-ios_token = "",
-ios_user_id = "",
+ios_url = ""
+ios_token = ""
+ios_user_id = ""
+
+[sendgrid]
+api_addr = "https://api.sendgrid.com/v3"
+api_key = "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"
+send_mail_path = "/mail/send"
+from_email = "support@storiqa.com"

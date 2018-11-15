@@ -26,7 +26,7 @@ impl TransactionConsumerImpl {
 
     pub fn subscribe(&self) -> impl Future<Item = Vec<(Consumer<TcpStream>, Channel<TcpStream>, String)>, Error = Error> {
         let self_clone = self.clone();
-        let fs = vec!["pushes".to_string(), "callbacks".to_string()]
+        let fs = vec!["pushes".to_string(), "callbacks".to_string(), "emails".to_string()]
             .into_iter()
             .map(move |queue_name| {
                 let self_clone2 = self_clone.clone();

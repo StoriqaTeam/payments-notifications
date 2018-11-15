@@ -5,6 +5,7 @@ use failure::{Backtrace, Context, Fail};
 use validator::ValidationErrors;
 
 use client::callback::ErrorKind as CallbackClientErrorKind;
+use client::email::ErrorKind as EmailClientErrorKind;
 use client::ios::ErrorKind as IosClientErrorKind;
 
 #[derive(Debug)]
@@ -27,6 +28,8 @@ pub enum ErrorKind {
     NotFound,
     #[fail(display = "service error - balance failure")]
     Balance,
+    #[fail(display = "service error - fake error")]
+    Fake,
 }
 
 #[allow(dead_code)]
@@ -67,6 +70,12 @@ pub enum ErrorContext {
     InvalidUuid,
     #[fail(display = "service error context - operation not yet supproted")]
     NotSupported,
+    #[fail(display = "service error context - tokio timer error")]
+    Timer,
+    #[fail(display = "service error context - rabbit error")]
+    Lapin,
+    #[fail(display = "service error context - fake error")]
+    Fake,
 }
 
 derive_error_impls!();
@@ -87,6 +96,16 @@ impl From<CallbackClientErrorKind> for ErrorKind {
             CallbackClientErrorKind::Internal => ErrorKind::Internal,
             CallbackClientErrorKind::Unauthorized => ErrorKind::Unauthorized,
             CallbackClientErrorKind::MalformedInput => ErrorKind::MalformedInput,
+        }
+    }
+}
+
+impl From<EmailClientErrorKind> for ErrorKind {
+    fn from(err: EmailClientErrorKind) -> Self {
+        match err {
+            EmailClientErrorKind::Internal => ErrorKind::Internal,
+            EmailClientErrorKind::Unauthorized => ErrorKind::Unauthorized,
+            EmailClientErrorKind::MalformedInput => ErrorKind::MalformedInput,
         }
     }
 }
