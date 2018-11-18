@@ -21,8 +21,6 @@ pub struct Config {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub dns_threads: usize,
-    pub storiqa_url: String,
-    pub transactions_url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
