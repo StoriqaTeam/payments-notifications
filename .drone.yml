@@ -1,3 +1,14 @@
+clone:
+  git:
+    image: plugins/git:next
+    pull: true
+    recursive: true
+    when:
+      event:
+      - pull_request
+      - push
+      - tag
+
 pipeline:
   restore-cache:
     image: plugins/s3-cache:1
@@ -15,18 +26,8 @@ pipeline:
 # Test PR
 ###
 
-  update_pr:
-    image: plugins/git
-    commands:
-    - export BRANCH_SRC=origin/${DRONE_COMMIT_REFSPEC%%:*} BRANCH_DST=origin/${DRONE_BRANCH}
-    - cp -rpf .git .git.bak
-    - git config --global user.email "service@storiqa.com" && git config --global user.name "Storiqa Common"
-    - git fetch && git checkout $BRANCH_SRC && git merge --no-commit $BRANCH_DST
-    - rm -rf .git && mv -f .git.bak .git
-    when:
-      event: pull_request
   test:
-    image: rust:1.30.0-stretch
+    image: rust:1.30.1-stretch
     environment:
     - RUN_MODE=k8s
     - DATABASE_HOST=db-postgresql
@@ -57,7 +58,7 @@ pipeline:
 ###
 
   build:
-    image: rust:1.30.0-stretch
+    image: rust:1.30.1-stretch
     environment:
     - CARGO_HOME=deps
     commands:
@@ -66,7 +67,7 @@ pipeline:
     when:
       event: push
   build:
-    image: rust:1.30.0-stretch
+    image: rust:1.30.1-stretch
     environment:
     - CARGO_HOME=deps
     commands:
@@ -128,7 +129,7 @@ pipeline:
       ansible-playbook \
       -i ~/payments-infra/ansible/hosts-production.yml \
       --tags notifications \
-      --extra-vars "pay_gw_tag=${DRONE_TAG}" \
+      --extra-vars "pay_notifications_tag=${DRONE_TAG}" \
       ~/payments-infra/ansible/docker.yml
     secrets:
     - ssh_username
