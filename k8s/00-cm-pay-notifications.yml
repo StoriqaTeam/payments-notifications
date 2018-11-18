@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-notifications
+data:
+  base.toml: |
+    [server]
+    host = "0.0.0.0"
+    port = 8000
+  k8s.toml: |
+    [client]
+    dns_threads = 4
+
+    [cpu_pool]
+    size = 1
+
+    [rabbit]
+    url = "amqp://user:ttAOXTnkA3@amqp-rabbitmq:5672//?heartbeat=3&frame_max=131072"
+    thread_pool_size = 2
+    connection_timeout_secs = 10
+    connection_pool_size = 10
+    restart_subscription_secs = 30
+
+    [ios_credentials]
+    ios_url = ""
+    ios_token = ""
+    ios_user_id = ""
+
+    [sendgrid]
+    api_addr = "https://api.sendgrid.com/v3"
+    api_key = "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"
+    send_mail_path = "/mail/send"
+    from_email = "support@storiqa.com"

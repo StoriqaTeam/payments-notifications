@@ -10,7 +10,6 @@ spec:
     matchLabels:
       app: notifications
       stack: payments
-  replicas: 1
   template:
     metadata:
       name: payments-notifications
@@ -23,19 +22,13 @@ spec:
       containers:
       - name: notifications
         image: storiqateam/payments-notifications
-        ports:
-        - containerPort: 8000
         env:
         - name: RUN_MODE
           value: k8s
         - name: RUST_BACKTRACE
           value: "1"
         - name: RUST_LOG
-          value: payments=debug
-        - name: DATABASE_HOST
-          value: postgres
-        - name: DATABASE_URL
-          value: postgresql://notifications:notifications@postgres/notifications
+          value: payments_notifications=debug
         volumeMounts:
         - name: conf
           mountPath: /app/config/
