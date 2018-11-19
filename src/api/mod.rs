@@ -1,15 +1,11 @@
 use std::net::SocketAddr;
 
-use diesel::pg::PgConnection;
-use diesel::r2d2::ConnectionManager;
 use failure::{Compat, Fail};
 use futures::future;
 use futures::prelude::*;
-use futures_cpupool::CpuPool;
 use hyper;
 use hyper::Server;
 use hyper::{service::Service, Body, Request, Response};
-use r2d2::Pool;
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
@@ -21,14 +17,11 @@ mod utils;
 
 use self::controllers::*;
 use self::error::*;
-use r2d2;
 
 #[derive(Clone)]
 pub struct ApiService {
     server_address: SocketAddr,
     config: Config,
-    db_pool: Pool<ConnectionManager<PgConnection>>,
-    cpu_pool: CpuPool,
 }
 
 impl ApiService {
@@ -41,19 +34,9 @@ impl ApiService {
                 config.server.host,
                 config.server.port
             ))?;
-        let database_url = config.database.url.clone();
-        let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
-        let db_pool = r2d2::Pool::builder().build(manager).map_err(ectx!(try
-            ErrorContext::Config,
-            ErrorKind::Internal =>
-            database_url
-        ))?;
-        let cpu_pool = CpuPool::new(config.cpu_pool.size);
         Ok(ApiService {
             config: config.clone(),
             server_address,
-            db_pool,
-            cpu_pool,
         })
     }
 }

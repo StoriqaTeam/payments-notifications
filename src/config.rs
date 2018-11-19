@@ -7,9 +7,7 @@ use sentry_integration::SentryConfig;
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub server: Server,
-    pub database: Database,
     pub client: Client,
-    pub cpu_pool: CpuPool,
     pub rabbit: Rabbit,
     pub sentry: Option<SentryConfig>,
     pub graylog: Option<GrayLogConfig>,
@@ -34,16 +32,6 @@ pub struct IosCredentials {
 pub struct Server {
     pub host: String,
     pub port: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Database {
-    pub url: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct CpuPool {
-    pub size: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -2,11 +2,5 @@
 host = "0.0.0.0"
 port = 8000
 
-[cpu_pool]
-size = 1
-
 [client]
 dns_threads = 4
-
-[database]
-url = "postgresql://notifications:notifications@postgres/notifications"
