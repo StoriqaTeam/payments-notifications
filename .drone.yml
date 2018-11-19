@@ -1,6 +1,6 @@
 clone:
   git:
-    image: plugins/git:next
+    image: plugins/git
     pull: true
     recursive: true
     when:
