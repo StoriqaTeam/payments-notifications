@@ -14,6 +14,8 @@ use tokio::net::tcp::TcpStream;
 
 pub trait TransactionPublisher: Send + Sync + 'static {
     fn error_callbacks(&self, callback: Callback) -> Box<Future<Item = (), Error = Error> + Send>;
+    fn error_emails(&self, email: Email) -> Box<Future<Item = (), Error = Error> + Send>;
+    fn error_pushes(&self, push: PushNotifications) -> Box<Future<Item = (), Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -73,7 +75,43 @@ impl TransactionPublisherImpl {
             Default::default(),
             Default::default(),
         ));
-        future::join_all(vec![f1, f2, f3])
+        let f4: Box<Future<Item = (), Error = StdIoError>> = Box::new(
+            channel
+                .queue_declare(
+                    "error_emails",
+                    QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
+                    Default::default(),
+                ).map(|_| ()),
+        );
+        let f5: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.queue_bind(
+            "error_emails",
+            "notifications",
+            "error_emails",
+            Default::default(),
+            Default::default(),
+        ));
+        let f6: Box<Future<Item = (), Error = StdIoError>> = Box::new(
+            channel
+                .queue_declare(
+                    "error_pushes",
+                    QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
+                    Default::default(),
+                ).map(|_| ()),
+        );
+        let f7: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.queue_bind(
+            "error_pushes",
+            "notifications",
+            "error_pushes",
+            Default::default(),
+            Default::default(),
+        ));
+        future::join_all(vec![f1, f2, f3, f4, f5, f6, f7])
             .map(|_| ())
             .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
     }
@@ -88,6 +126,31 @@ impl TransactionPublisher for TransactionPublisherImpl {
                     channel
                         .clone()
                         .basic_publish("notifications", "error_callbacks", payload, Default::default(), Default::default())
+                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
+                }).map(|_| ()),
+        )
+    }
+
+    fn error_emails(&self, email: Email) -> Box<Future<Item = (), Error = Error> + Send> {
+        Box::new(
+            self.get_channel()
+                .and_then(move |channel| {
+                    let payload = serde_json::to_string(&email).unwrap().into_bytes();
+                    channel
+                        .clone()
+                        .basic_publish("notifications", "error_emails", payload, Default::default(), Default::default())
+                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
+                }).map(|_| ()),
+        )
+    }
+    fn error_pushes(&self, push: PushNotifications) -> Box<Future<Item = (), Error = Error> + Send> {
+        Box::new(
+            self.get_channel()
+                .and_then(move |channel| {
+                    let payload = serde_json::to_string(&push).unwrap().into_bytes();
+                    channel
+                        .clone()
+                        .basic_publish("notifications", "error_pushes", payload, Default::default(), Default::default())
                         .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
                 }).map(|_| ()),
         )
