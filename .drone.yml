@@ -3,11 +3,6 @@ clone:
     image: plugins/git
     pull: true
     recursive: true
-    when:
-      event:
-      - pull_request
-      - push
-      - tag
 
 pipeline:
   restore-cache:
