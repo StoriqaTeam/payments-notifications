@@ -26,6 +26,7 @@ pub struct EmailClientImpl {
     api_key: String,
     send_mail_path: String,
     from_email: String,
+    from_name: String,
 }
 
 impl EmailClientImpl {
@@ -36,6 +37,7 @@ impl EmailClientImpl {
             api_key: config.sendgrid.api_key.clone(),
             send_mail_path: config.sendgrid.send_mail_path.clone(),
             from_email: config.sendgrid.from_email.clone(),
+            from_name: config.sendgrid.from_name.clone(),
         }
     }
 
@@ -44,7 +46,8 @@ impl EmailClientImpl {
         let api_key = self.api_key.clone();
         let send_mail_path = self.send_mail_path.clone();
         let from_email = self.from_email.clone();
-        let payload = SendGridPayload::from_email(email, from_email);
+        let from_name = self.from_name.clone();
+        let payload = SendGridPayload::from_email(email, from_email, from_name);
         let query = format!("{}/{}", api_addr.clone(), send_mail_path.clone());
         let query1 = query.clone();
         let query3 = query.clone();

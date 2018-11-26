@@ -27,7 +27,7 @@ pub struct Content {
 }
 
 impl SendGridPayload {
-    pub fn from_email(email: Email, from: String) -> Self {
+    pub fn from_email(email: Email, from_email: String, from_name: String) -> Self {
         let mut to: Vec<Address> = Vec::new();
         to.push(Address {
             email: email.to.clone(),
@@ -37,7 +37,10 @@ impl SendGridPayload {
         let mut personalizations: Vec<Personalization> = Vec::new();
         personalizations.push(Personalization { to });
 
-        let from = Address { email: from, name: None };
+        let from = Address {
+            email: from_email,
+            name: Some(from_name),
+        };
 
         let subject = email.subject.clone();
 
