@@ -121,11 +121,15 @@ pipeline:
     host: jumpbox.pay.stq.cloud
     command_timeout: 180
     script: |
-      ansible-playbook \
-      -i ~/payments-infra/ansible/hosts-production.yml \
-      --tags notifications \
-      --extra-vars "pay_notifications_tag=${DRONE_TAG}" \
-      ~/payments-infra/ansible/docker.yml
+      cd ~/payments-infra \
+      && git reset --hard \
+      && git fetch \
+      && git pull origin master \
+      && ansible-playbook \
+        -i ~/payments-infra/ansible/hosts-production.yml \
+        --tags notifications \
+        --extra-vars "pay_notifications_tag=${DRONE_TAG}" \
+        ~/payments-infra/ansible/docker.yml
     secrets:
     - ssh_username
     - ssh_key
