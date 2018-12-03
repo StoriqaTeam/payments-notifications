@@ -65,7 +65,7 @@ use self::client::*;
 use self::models::*;
 use self::prelude::*;
 use config::Config;
-use rabbit::{ConnectionHooks, RabbitConnectionManager, TransactionConsumerImpl, TransactionPublisherImpl};
+use rabbit::{ConnectionHooks, R2D2ErrorHandler, RabbitConnectionManager, TransactionConsumerImpl, TransactionPublisherImpl};
 use rabbit::{ErrorKind, ErrorSource};
 use services::Notificator;
 use utils::log_error;
@@ -104,6 +104,7 @@ pub fn start_server() {
     let rabbit_connection_pool = r2d2::Pool::builder()
         .max_size(config_clone.rabbit.connection_pool_size as u32)
         .connection_customizer(Box::new(ConnectionHooks))
+        .error_handler(Box::new(R2D2ErrorHandler))
         .build(rabbit_connection_manager)
         .expect("Cannot build rabbit connection pool");
     debug!("Finished creating rabbit connection pool");
