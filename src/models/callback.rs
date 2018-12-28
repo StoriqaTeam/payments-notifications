@@ -4,6 +4,7 @@ use models::*;
 #[serde(rename_all = "camelCase")]
 pub struct Callback {
     pub url: String,
+    pub transaction_id: TransactionId,
     pub amount_captured: String,
     pub currency: Currency,
     pub address: AccountAddress,
@@ -14,6 +15,7 @@ impl Default for Callback {
     fn default() -> Self {
         Self {
             url: String::default(),
+            transaction_id: TransactionId::generate(),
             amount_captured: String::default(),
             currency: Currency::Eth,
             address: AccountAddress::default(),
