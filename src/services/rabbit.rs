@@ -78,12 +78,14 @@ impl Notificator {
                             Either::B(Delay::new(Instant::now() + Duration::from_secs(delay)).map_err(|_| ()))
                         }
                     })
-            }).and_then(move |_| {
+            })
+            .and_then(move |_| {
                 publisher.error_pushes(push_clone2.clone()).map_err(|e| {
                     log_error(&e);
                     ()
                 })
-            }).then(|_| future::ok(()))
+            })
+            .then(|_| future::ok(()))
     }
 
     fn send_email(&self, email: Email) -> impl Future<Item = (), Error = Error> + Send {
@@ -103,12 +105,14 @@ impl Notificator {
                             Either::B(Delay::new(Instant::now() + Duration::from_secs(delay)).map_err(|_| ()))
                         }
                     })
-            }).and_then(move |_| {
+            })
+            .and_then(move |_| {
                 publisher.error_emails(email_clone2.clone()).map_err(|e| {
                     log_error(&e);
                     ()
                 })
-            }).then(|_| future::ok(()))
+            })
+            .then(|_| future::ok(()))
     }
 
     fn send_callback(&self, callback: Callback) -> impl Future<Item = (), Error = Error> + Send {
@@ -128,12 +132,14 @@ impl Notificator {
                             Either::B(Delay::new(Instant::now() + Duration::from_secs(delay)).map_err(|_| ()))
                         }
                     })
-            }).and_then(move |_| {
+            })
+            .and_then(move |_| {
                 publisher.error_callbacks(callback_clone2.clone()).map_err(|e| {
                     log_error(&e);
                     ()
                 })
-            }).then(|_| future::ok(()))
+            })
+            .then(|_| future::ok(()))
     }
 }
 

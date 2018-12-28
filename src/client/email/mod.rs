@@ -67,7 +67,8 @@ impl EmailClientImpl {
                     .body(Body::from(body))
                     .map_err(ectx!(ErrorSource::Hyper, ErrorKind::MalformedInput => query3))
                     .into_future()
-            }).and_then(move |req| cli.request(req).map_err(ectx!(ErrorKind::Internal => query1)))
+            })
+            .and_then(move |req| cli.request(req).map_err(ectx!(ErrorKind::Internal => query1)))
             .map(|_| ())
     }
 }
