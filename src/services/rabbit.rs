@@ -42,11 +42,7 @@ impl Notificator {
     pub fn handle_message(&self, data: Vec<u8>, queue_name: String) -> impl Future<Item = (), Error = Error> + Send {
         let self_clone = self.clone();
         match &*queue_name {
-            "pushes" => Box::new(
-                parse::<PushNotifications>(data)
-                    .into_future()
-                    .and_then(move |push| self_clone.send_push(push)),
-            ) as Box<Future<Item = (), Error = Error> + Send>,
+            "pushes" => Box::new(future::ok(())), // Push notifications are temporarily disabled
             "callbacks" => Box::new(
                 parse::<Callback>(data)
                     .into_future()
@@ -63,6 +59,8 @@ impl Notificator {
         }
     }
 
+    // Push notifications are temporarily disabled
+    #[allow(dead_code)]
     fn send_push(&self, push: PushNotifications) -> impl Future<Item = (), Error = Error> + Send {
         let ios_client = self.ios_client.clone();
         let publisher = self.publisher.clone();

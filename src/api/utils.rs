@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json;
 use std::fmt::Debug;
 
+#[allow(dead_code)]
 pub fn parse_body<T>(body: Vec<u8>) -> impl Future<Item = T, Error = Error> + Send
 where
     T: for<'de> Deserialize<'de> + Send,
@@ -18,6 +19,7 @@ where
         .and_then(|string| serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::RequestJson, ErrorKind::BadRequest => string)))
 }
 
+#[allow(dead_code)]
 pub fn response_with_model<M>(model: &M) -> ControllerFuture
 where
     M: Debug + Serialize,
