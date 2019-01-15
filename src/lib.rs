@@ -51,14 +51,15 @@ mod services;
 mod utils;
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use failure::Error as FailureError;
 use futures::future::{self, Either};
 use lapin_futures::channel::Channel;
-use lapin_futures::error::Error as LapinError;
 use tokio::net::tcp::TcpStream;
 use tokio::prelude::*;
 use tokio::timer::{Delay, Timeout};
@@ -136,28 +137,38 @@ pub fn start_server() {
             let counters_clone = counters.clone();
             let consumers_to_close: Rc<RefCell<Vec<(Channel<TcpStream>, String)>>> = Rc::new(RefCell::new(Vec::new()));
             let consumers_to_close_clone = consumers_to_close.clone();
+            let last_delivery_tag: Rc<RefCell<HashMap<String, u64>>> = Rc::new(RefCell::new(HashMap::new()));
+            let last_delivery_tag_clone = last_delivery_tag.clone();
             let fetcher_clone = fetcher.clone();
             let resubscribe_duration = Duration::from_secs(config_clone.rabbit.restart_subscription_secs as u64);
             let subscription = consumer
                 .subscribe()
                 .and_then(move |consumer_and_chans| {
+                    let counters_clone = counters.clone();
                     let futures = consumer_and_chans.into_iter().map(move |(stream, channel, queue_name)| {
-                        let counters_clone = counters.clone();
+                        let counters_clone = counters_clone.clone();
+                        let last_delivery_tag_clone = last_delivery_tag.clone();
                         let fetcher_clone = fetcher_clone.clone();
                         let consumers_to_close = consumers_to_close.clone();
+                        let counsumer_tag = stream.consumer_tag.clone();
                         let mut consumers_to_close_lock = consumers_to_close.borrow_mut();
-                        consumers_to_close_lock.push((channel.clone(), stream.consumer_tag.clone()));
+                        consumers_to_close_lock.push((channel.clone(), counsumer_tag.clone()));
                         stream
                             .for_each(move |message| {
                                 trace!("got message: {}", MessageDelivery::new(message.clone()));
                                 let delivery_tag = message.delivery_tag;
+                                let counsumer_tag = counsumer_tag.clone();
                                 let mut counters = counters_clone.borrow_mut();
                                 counters.0 += 1;
                                 let counters_clone2 = counters_clone.clone();
                                 let channel = channel.clone();
-                                fetcher_clone
-                                    .handle_message(message.data, queue_name.clone())
-                                    .then(move |res| match res {
+                                let last_delivery_tag_clone2 = last_delivery_tag_clone.clone();
+                                let mut last_delivery_tag_clone = last_delivery_tag_clone.borrow_mut();
+                                last_delivery_tag_clone.insert(counsumer_tag.clone(), delivery_tag);
+                                fetcher_clone.handle_message(message.data, queue_name.clone()).then(move |res| {
+                                    let mut last_delivery_tag_clone = last_delivery_tag_clone2.borrow_mut();
+                                    last_delivery_tag_clone.remove(&counsumer_tag);
+                                    match res {
                                         Ok(_) => {
                                             let mut counters_clone = counters_clone2.clone();
                                             let mut counters = counters_clone.borrow_mut();
@@ -184,7 +195,8 @@ pub fn start_server() {
                                             }));
                                             Either::B(future::ok(()))
                                         }
-                                    })
+                                    }
+                                })
                             })
                             .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
                     });
@@ -202,20 +214,34 @@ pub fn start_server() {
                             counters.0, counters.1, counters.2, counters.3, counters.4
                         );
                         let mut consumers_to_close_lock = consumers_to_close_clone.borrow_mut();
+                        let last_delivery_tag_clone2 = last_delivery_tag_clone.clone();
+                        let last_delivery_tag_lock = last_delivery_tag_clone2.borrow_mut();
                         let fs: Vec<_> = consumers_to_close_lock
                             .iter_mut()
-                            .map(|(channel, consumer_tag)| {
+                            .map(move |(channel, consumer_tag)| {
                                 let mut channel = channel.clone();
+                                let channel_clone = channel.clone();
                                 let consumer_tag = consumer_tag.clone();
+                                let last_delivery_tag = last_delivery_tag_lock.get(&consumer_tag.to_string()).cloned();
                                 trace!("Canceling {} with channel `{}`", consumer_tag, channel.id);
-                                channel.cancel_consumer(consumer_tag.to_string())
+                                if let Some(last_delivery_tag) = last_delivery_tag {
+                                    Either::A(channel.basic_nack(last_delivery_tag, true, true))
+                                } else {
+                                    Either::B(future::ok(()))
+                                }
+                                .map_err(From::from)
+                                .and_then(move |_| channel.cancel_consumer(consumer_tag.to_string()).map_err(From::from))
+                                .and_then(move |_| {
+                                    let mut transport = channel_clone.transport.lock().unwrap();
+                                    transport.conn.basic_recover(channel_clone.id, true).map_err(From::from)
+                                })
                             })
                             .collect();
 
                         future::join_all(fs)
                     })
                     .map(|_| ())
-                    .map_err(|e: LapinError| {
+                    .map_err(|e: FailureError| {
                         error!("Error closing consumer {}", e);
                     })
                     .then(move |_| {
