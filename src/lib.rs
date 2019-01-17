@@ -166,6 +166,11 @@ pub fn start_server() {
                                 let last_delivery_tag_clone2 = last_delivery_tag_clone.clone();
                                 let mut last_delivery_tag_clone = last_delivery_tag_clone.borrow_mut();
                                 last_delivery_tag_clone.insert(counsumer_tag.clone(), delivery_tag);
+                                debug!(
+                                    "Received from rabbit: message: {:?}, queue name: {:?}",
+                                    message.data,
+                                    queue_name.clone()
+                                );
                                 fetcher_clone.handle_message(message.data, queue_name.clone()).then(move |res| {
                                     let mut last_delivery_tag_clone = last_delivery_tag_clone2.borrow_mut();
                                     last_delivery_tag_clone.remove(&counsumer_tag);
