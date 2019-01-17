@@ -122,7 +122,7 @@ impl Notificator {
         stream::iter_ok::<_, ()>(vec![2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
             .for_each(move |delay| {
                 let callback_clone = callback.clone();
-                debug!("Sending callback: {:?}", callback);
+                info!("Sending callback: {:?}", callback);
                 callback_client
                     .send(callback.clone())
                     .map_err(ectx!(convert => callback_clone))
