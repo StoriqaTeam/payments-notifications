@@ -4,3 +4,5 @@ port = 8000
 
 [client]
 dns_threads = 4
+der_path = "config/keys/payments.dev.pfx"
+tls_password = ""

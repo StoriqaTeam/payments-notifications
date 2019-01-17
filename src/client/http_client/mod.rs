@@ -1,6 +1,10 @@
 mod error;
 
+use std::fs::File;
+use std::io::Read;
+
 use config::Config;
+
 use failure::Fail;
 use futures::future::Either;
 use futures::prelude::*;
@@ -8,6 +12,8 @@ use hyper;
 use hyper::{client::HttpConnector, Body, Request, Response};
 use hyper_tls::HttpsConnector;
 use log::{self, Level};
+use native_tls::Identity;
+use native_tls::TlsConnector;
 
 use self::error::*;
 use utils::read_body;
@@ -23,8 +29,14 @@ pub struct HttpClientImpl {
 
 impl HttpClientImpl {
     pub fn new(config: &Config) -> Self {
-        let connector = HttpsConnector::new(config.client.dns_threads).unwrap();
-        //connector.https_only(true);
+        debug!("Reading public key file {}", &config.client.der_path);
+        let mut f = File::open(config.client.der_path.clone()).unwrap();
+        let mut der: Vec<u8> = Vec::new();
+        f.read_to_end(&mut der).unwrap();
+        let identity = Identity::from_pkcs12(&der, &config.client.tls_password).unwrap();
+        let tls_connector = TlsConnector::builder().identity(identity).build().unwrap();
+        let http_connector = HttpConnector::new(config.client.dns_threads);
+        let connector = (http_connector, tls_connector).into();
         let cli = hyper::Client::builder().build(connector);
         Self { cli }
     }

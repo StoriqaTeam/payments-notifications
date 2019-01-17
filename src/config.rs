@@ -19,6 +19,8 @@ pub struct Config {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub dns_threads: usize,
+    pub der_path: String,
+    pub tls_password: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

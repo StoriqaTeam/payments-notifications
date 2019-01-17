@@ -31,6 +31,7 @@ extern crate validator;
 #[macro_use]
 extern crate sentry;
 extern crate chrono;
+extern crate native_tls;
 extern crate simplelog;
 extern crate tokio;
 extern crate tokio_core;

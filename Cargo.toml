@@ -24,6 +24,7 @@ hyper-tls = "0.3"
 lapin-async = {version = "0.15", git = "https://github.com/StoriqaTeam/lapin", branch = "0.15.2" }
 lapin-futures = {version = "0.15", git = "https://github.com/StoriqaTeam/lapin", branch = "0.15.2" }
 log = { version = "0.4", features = ["std", "serde"] }
+native-tls = "0.2.2"
 num = { version = "0.2", features = ["i128"] }
 rand = "0.5"
 r2d2 = "0.8.1"
