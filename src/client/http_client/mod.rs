@@ -91,7 +91,7 @@ impl HttpClient for HttpClientImpl {
             if resp.status().is_client_error() || resp.status().is_server_error() {
                 match resp.status().as_u16() {
                     400 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadRequest)),
-                    401 => Err(ectx!(err ErrorSource::Server, ErrorKind::Unauthorized)),
+                    401 | 403 => Err(ectx!(err ErrorSource::Server, ErrorKind::Unauthorized)),
                     404 => Err(ectx!(err ErrorSource::Server, ErrorKind::NotFound)),
                     500 => Err(ectx!(err ErrorSource::Server, ErrorKind::Internal)),
                     502 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadGateway)),
