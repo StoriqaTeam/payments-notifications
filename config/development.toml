@@ -8,7 +8,7 @@ der_path = "config/keys/payments.dev.pfx"
 tls_password = ""
 
 [rabbit]
-url = "amqp://guest:guest@localhost:5672//?heartbeat=3&frame_max=131072"
+url = "amqp://user:ttAOXTnkA3@amqp-rabbitmq:5672//?heartbeat=3&frame_max=131072"
 thread_pool_size = 2
 connection_timeout_secs = 10
 connection_pool_size = 10

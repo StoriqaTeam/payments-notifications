@@ -35,7 +35,8 @@ impl HttpClientImpl {
         f.read_to_end(&mut der).unwrap();
         let identity = Identity::from_pkcs12(&der, &config.client.tls_password).unwrap();
         let tls_connector = TlsConnector::builder().identity(identity).build().unwrap();
-        let http_connector = HttpConnector::new(config.client.dns_threads);
+        let mut http_connector = HttpConnector::new(config.client.dns_threads);
+        http_connector.enforce_http(false);
         let connector = (http_connector, tls_connector).into();
         let cli = hyper::Client::builder().build(connector);
         Self { cli }
