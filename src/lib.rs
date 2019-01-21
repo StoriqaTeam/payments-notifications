@@ -114,12 +114,13 @@ pub fn start_server() {
         .expect("Cannot build rabbit connection pool");
     debug!("Finished creating rabbit connection pool");
     let consumer = TransactionConsumerImpl::new(rabbit_connection_pool.clone(), rabbit_thread_pool.clone());
-    let publisher = Arc::new(TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool));
+    let mut publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
     core.run(publisher.init())
         .map_err(|e| {
             log_error(&e);
         })
         .unwrap();
+    let publisher = Arc::new(publisher);
     let publisher_clone = publisher.clone();
 
     let fetcher = Notificator::new(

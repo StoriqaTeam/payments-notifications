@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use futures::future;
 use futures_cpupool::CpuPool;
-use lapin_futures::channel::{Channel, ExchangeDeclareOptions, QueueDeclareOptions};
+use lapin_futures::channel::{ExchangeDeclareOptions, QueueDeclareOptions};
 use lapin_futures::error::Error as LapinError;
 use r2d2::PooledConnection;
 use serde_json;
-use tokio::net::tcp::TcpStream;
 
 use super::error::*;
 use super::r2d2::RabbitConnectionManager;
@@ -22,32 +23,22 @@ pub trait TransactionPublisher: Send + Sync + 'static {
 pub struct TransactionPublisherImpl {
     rabbit_pool: RabbitPool,
     thread_pool: CpuPool,
+    channel: Arc<PooledConnection<RabbitConnectionManager>>,
 }
 
 impl TransactionPublisherImpl {
     pub fn new(rabbit_pool: RabbitPool, thread_pool: CpuPool) -> Self {
-        Self { rabbit_pool, thread_pool }
+        let channel = Arc::new(rabbit_pool.get().expect("Can not get channel from pool"));
+        Self {
+            rabbit_pool,
+            thread_pool,
+            channel,
+        }
     }
 
-    pub fn init(&self) -> impl Future<Item = (), Error = Error> {
-        let self_clone = self.clone();
-        self.get_channel().and_then(move |channel| self_clone.declare(&channel))
-    }
+    pub fn init(&mut self) -> impl Future<Item = (), Error = Error> {
+        let channel = self.channel.clone();
 
-    fn get_channel(&self) -> impl Future<Item = PooledConnection<RabbitConnectionManager>, Error = Error> {
-        // unresolved at the moment - ideally we want to call get on other thread, since it's blocking
-        // on the other hand doing so we escape from the thread that has tokio core reference and
-        // therefore cannot do spawns
-        // let rabbit_pool = self.rabbit_pool.clone();
-        // self.thread_pool
-        //     .spawn_fn(move || rabbit_pool.get().map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal)))
-        self.rabbit_pool
-            .get()
-            .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-            .into_future()
-    }
-
-    fn declare(&self, channel: &Channel<TcpStream>) -> impl Future<Item = (), Error = Error> {
         let f1: Box<Future<Item = (), Error = LapinError>> = Box::new(channel.exchange_declare(
             "notifications",
             "direct",
@@ -122,42 +113,36 @@ impl TransactionPublisherImpl {
 
 impl TransactionPublisher for TransactionPublisherImpl {
     fn error_callbacks(&self, callback: Callback) -> Box<Future<Item = (), Error = Error> + Send> {
+        let channel = self.channel.clone();
+        let payload = serde_json::to_string(&callback).unwrap().into_bytes();
         Box::new(
-            self.get_channel()
-                .and_then(move |channel| {
-                    let payload = serde_json::to_string(&callback).unwrap().into_bytes();
-                    channel
-                        .clone()
-                        .basic_publish("notifications", "error_callbacks", payload, Default::default(), Default::default())
-                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                })
+            channel
+                .clone()
+                .basic_publish("notifications", "error_callbacks", payload, Default::default(), Default::default())
+                .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
                 .map(|_| ()),
         )
     }
 
     fn error_emails(&self, email: Email) -> Box<Future<Item = (), Error = Error> + Send> {
+        let channel = self.channel.clone();
+        let payload = serde_json::to_string(&email).unwrap().into_bytes();
         Box::new(
-            self.get_channel()
-                .and_then(move |channel| {
-                    let payload = serde_json::to_string(&email).unwrap().into_bytes();
-                    channel
-                        .clone()
-                        .basic_publish("notifications", "error_emails", payload, Default::default(), Default::default())
-                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                })
+            channel
+                .clone()
+                .basic_publish("notifications", "error_emails", payload, Default::default(), Default::default())
+                .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
                 .map(|_| ()),
         )
     }
     fn error_pushes(&self, push: PushNotifications) -> Box<Future<Item = (), Error = Error> + Send> {
+        let channel = self.channel.clone();
+        let payload = serde_json::to_string(&push).unwrap().into_bytes();
         Box::new(
-            self.get_channel()
-                .and_then(move |channel| {
-                    let payload = serde_json::to_string(&push).unwrap().into_bytes();
-                    channel
-                        .clone()
-                        .basic_publish("notifications", "error_pushes", payload, Default::default(), Default::default())
-                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                })
+            channel
+                .clone()
+                .basic_publish("notifications", "error_pushes", payload, Default::default(), Default::default())
+                .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
                 .map(|_| ()),
         )
     }
