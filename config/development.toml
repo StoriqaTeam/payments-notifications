@@ -6,6 +6,7 @@ port = 8000
 dns_threads = 4
 der_path = "config/keys/payments.dev.pfx"
 tls_password = ""
+secp_private_key = ""
 
 [rabbit]
 url = "amqp://user:ttAOXTnkA3@amqp-rabbitmq:5672//?heartbeat=3&frame_max=131072"

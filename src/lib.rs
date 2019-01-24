@@ -32,6 +32,8 @@ extern crate validator;
 extern crate sentry;
 extern crate chrono;
 extern crate native_tls;
+extern crate secp256k1;
+extern crate sha2;
 extern crate simplelog;
 extern crate tokio;
 extern crate tokio_core;
@@ -93,7 +95,7 @@ pub fn start_server() {
     let config_clone = config.clone();
     let client = HttpClientImpl::new(&config);
     let ios_client = IosClientImpl::new(&config, client.clone());
-    let callback_client = CallbackClientImpl::new(client.clone());
+    let callback_client = CallbackClientImpl::new(client.clone(), config.client.secp_private_key.clone());
     let email_client = EmailClientImpl::new(&config, client);
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
