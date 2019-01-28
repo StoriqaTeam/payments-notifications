@@ -15,8 +15,7 @@ use sha2::Sha256;
 pub use self::error::*;
 use super::HttpClient;
 use models::*;
-use utils::parse_hex;
-use utils::read_body;
+use utils::{parse_hex, read_body, to_hex};
 
 pub trait CallbackClient: Send + Sync + 'static {
     fn send(&self, callback: Callback) -> Box<Future<Item = (), Error = Error> + Send>;
@@ -69,8 +68,9 @@ impl CallbackClientImpl {
         let bytes = hasher.result();
         let message = Message::from_slice(&bytes).map_err(ectx!(try ErrorKind::Internal => body))?;
         let secp = Secp256k1::new();
-        let secret_key = SecretKey::from_slice(&secp, &parse_hex(&self.secp_private_key)).map_err(ectx!(try ErrorKind::Internal))?;
-        Ok(secp.sign(&message, &secret_key).to_string())
+        let secret_key = SecretKey::from_slice(&parse_hex(&self.secp_private_key)).map_err(ectx!(try ErrorKind::Internal))?;
+        let compact = secp.sign(&message, &secret_key).serialize_compact();
+        Ok(to_hex(&compact))
     }
 }
 
