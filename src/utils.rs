@@ -86,7 +86,5 @@ pub fn to_hex(bytes: &[u8]) -> String {
         v.push(CHARS[(byte & 0xf) as usize]);
     }
 
-    unsafe {
-        String::from_utf8_unchecked(v)
-    }
+    unsafe { String::from_utf8_unchecked(v) }
 }
