@@ -6,6 +6,7 @@ use futures::prelude::*;
 use hyper;
 use hyper::Server;
 use hyper::{service::Service, Body, Request, Response};
+use tokio_core::reactor::Core;
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
@@ -129,8 +130,8 @@ impl Service for ApiService {
     }
 }
 
-pub fn start_server(config: Config) {
-    hyper::rt::run(future::lazy(move || {
+pub fn start_server(mut core: Core, config: Config) {
+    let _ = core.run(future::lazy(move || {
         ApiService::from_config(&config)
             .into_future()
             .and_then(move |api| {
