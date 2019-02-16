@@ -89,11 +89,11 @@ pub fn start_server() {
     let callback_client = CallbackClientImpl::new(client.clone(), config.client.secp_private_key.clone());
     let email_client = EmailClientImpl::new(&config, client);
 
-    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
     debug!("Started creating rabbit connection pool");
 
-    let rabbit_connection_manager = core
-        .run(RabbitConnectionManager::create(&config_clone))
+    let rabbit_connection_manager = rt
+        .block_on(RabbitConnectionManager::create(&config_clone))
         .map_err(|e| {
             log_error(&e);
         })
@@ -101,8 +101,8 @@ pub fn start_server() {
     debug!("Finished creating rabbit connection pool");
     let consumer = TransactionConsumerImpl::new(rabbit_connection_manager.clone());
     let channel = Arc::new(rabbit_connection_manager.get_channel().expect("Can not get channel from pool"));
-    let publisher = core
-        .run(TransactionPublisherImpl::init(channel))
+    let publisher = rt
+        .block_on(TransactionPublisherImpl::init(channel))
         .map_err(|e| {
             log_error(&e);
         })
@@ -116,8 +116,8 @@ pub fn start_server() {
         Arc::new(email_client),
         publisher_clone,
     );
-    let consumer_and_chans = core
-        .run(consumer.subscribe())
+    let consumer_and_chans = rt
+        .block_on(consumer.subscribe())
         .expect("Can not create subscribers for transactions in rabbit");
     debug!("Subscribing to rabbit");
     let fetcher_clone = fetcher.clone();
@@ -153,8 +153,11 @@ pub fn start_server() {
     });
 
     let subscription = future::join_all(futures).map(|_| ());
-    core.handle().spawn(subscription);
-    api::start_server(core, config);
+    rt.spawn(subscription);
+
+    rt.spawn(api::server(config));
+
+    rt.shutdown_on_idle().wait().expect("Tokio runtime shutdown failed");
 }
 
 fn get_config() -> Config {
