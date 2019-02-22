@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
 
 use failure::{Compat, Fail};
+use futures::future;
 use futures::prelude::*;
 use hyper;
 use hyper::Server;
 use hyper::{service::Service, Body, Request, Response};
+use tokio_core::reactor::Core;
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
@@ -128,24 +130,23 @@ impl Service for ApiService {
     }
 }
 
-pub fn server(config: Config) -> Box<Future<Item = (), Error = ()> + Send> {
-    let fut = ApiService::from_config(&config)
-        .into_future()
-        .and_then(move |api| {
-            let api_clone = api.clone();
-            let new_service = move || {
-                let res: Result<_, hyper::Error> = Ok(api_clone.clone());
-                res
-            };
-            let addr = api.server_address.clone();
-            let server = Server::bind(&api.server_address)
-                .serve(new_service)
-                .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => addr));
-            info!("Listening on http://{}", addr);
-            server
-        })
-        .map_err(|e: Error| log_error(&e))
-        .map(|_| ());
-
-    Box::new(fut)
+pub fn start_server(mut core: Core, config: Config) {
+    let _ = core.run(future::lazy(move || {
+        ApiService::from_config(&config)
+            .into_future()
+            .and_then(move |api| {
+                let api_clone = api.clone();
+                let new_service = move || {
+                    let res: Result<_, hyper::Error> = Ok(api_clone.clone());
+                    res
+                };
+                let addr = api.server_address.clone();
+                let server = Server::bind(&api.server_address)
+                    .serve(new_service)
+                    .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => addr));
+                info!("Listening on http://{}", addr);
+                server
+            })
+            .map_err(|e: Error| log_error(&e))
+    }));
 }
